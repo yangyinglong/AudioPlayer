@@ -85,16 +85,144 @@ int read_tag_from_file(const char *file, struct _medialib *media)
 	// printf("%s\n", media->title);
 	// printf("%s\n", media->artist);
 	// printf("%s\n", media->album);
-	// printf("%s\n", media->genre);
+	// printf("%s\n", media->genre);	
 	// printf("%f\n", media->record_time);
 	id3_file_close(id3file);
 	return 0;
 }
 
-// int main(int argc, char const *argv[])
-// {
-// 	struct _medialib *media;
-// 	media = (struct _medialib *)malloc(sizeof(struct _medialib));
-// 	read_tag_from_file("Korb-Cuchulainn.mp3", media);
-// 	return 0;
-// }
+
+node_t * link_to_end(node_t *nt)
+{
+	if (nt->p)
+	{
+		return link_to_end(nt->p);
+	}
+	else
+	{
+		return nt;
+	}
+}
+
+
+int link_add(link_t *mlink, const char *file)
+{
+	node_t *endnode;
+	node_t *mnode = (node_t *)malloc(sizeof(node_t));
+	if (!mnode)
+	{
+		printf("malloc fail!\n");
+		return 1;
+	}
+	if (read_tag_from_file(file, &mnode->item))
+	{
+		printf("read file fail\n");
+		free(mnode);
+		return 1;
+	}
+	mnode->p = NULL;
+	if (mlink->np)
+	{
+		endnode = link_to_end(mlink->np);
+		endnode->p = mnode;
+	}
+	else
+	{
+		mlink->np = mnode;
+	}
+	mlink->length++;
+	return 0;
+}
+
+
+int link_find(link_t *mlink, find_cond t, const char *str2, node_t **res)
+{
+	if (*res)
+	{	
+		free(*res);
+		*res = NULL;
+	}
+	int i, l;
+	int count = 0;
+	const char *str1;
+	node_t * tmp, **jump, **jump2;
+	if (!mlink->length)
+	{
+		printf("medialib is empty, can not find!\n");
+		return 0;
+	}
+	if (str2)
+	{
+		l = strlen(str2);
+	}
+	else
+	{
+		printf("string address is error!\n");
+		return 0;
+	}
+	if (!l)
+	{
+		printf("string length is 0, error\n");
+		return 0;
+	}
+	tmp = mlink->np;
+	node_t * tmp_link = (node_t *)malloc(sizeof(node_t *) * mlink->length);
+	jump = &tmp_link;
+	while(tmp)
+	{
+		switch(t) {
+			case BY_TITLE:
+				str1 = tmp->item.title;
+				break;
+			case BY_ARTIST:
+				str1 = tmp->item.artist;
+				break;
+			case BY_ABLUM:
+				str1 = tmp->item.album;
+				break;
+			case BY_GENRE:
+				str1 = tmp->item.genre;
+			case BY_FILEPATH:
+				str1 = tmp->item.filepath;
+				break;
+			default:
+				printf("error\n");
+				free(tmp_link);
+				return 0;
+		}
+		if (str1 && strlen(str1))
+		{
+			if (strcmp(str1, str2) == 0)
+			{
+				*(jump + count) = tmp;
+				count ++;
+			}
+		}
+		tmp = tmp->p;
+	}
+	*res = (node_t *)malloc(sizeof(node_t *) * count);
+
+	jump2 = res;
+	for (int i = 0; i < count; ++i)
+	{
+		*(jump2 + i) = *(jump + i);
+	}
+	free(tmp_link);
+	return count;
+}
+
+
+int main(int argc, char const *argv[])
+{
+	// struct _medialib *media;
+	// media = (struct _medialib *)malloc(sizeof(struct _medialib));
+	// read_tag_from_file("SunnyChoi-IWillStandByYou.mp3", media);
+
+	link_t mlink = {NULL, 0};
+	link_add(&mlink, "Korb-Cuchulainn.mp3");
+	link_add(&mlink, "SunnyChoi-IWillStandByYou.mp3");
+	node_t *res = (node_t *)malloc(sizeof(node_t));
+	int i = link_find(&mlink, BY_TITLE, "Cuchulainn", &res);
+	printf("%d\n", i);
+	return 0;
+}
